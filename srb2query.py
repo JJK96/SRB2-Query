@@ -13,17 +13,27 @@ class PacketType(Enum):
     PT_MOREFILESNEEDED = 35
 
 def checksum(buf):
+    """
+    @param buf: buffer without the checksum part
+    """
     c = 0x1234567
     for i, b in enumerate(buf):
         c += b * (i+1)
     return c
 
-packet_formats = {
-    PacketType.PT_PLAYERINFO: {
-        "format": "B22s4sBBBIH",
-        "fields": "num name address team skin data score timeinserver"
-    }
-}
+def checksum_match(buf, checksum):
+    """
+    Returns the index at which the checksum matches
+    Or False if the checksum matches never
+    @param buf: buffer including the checksum part
+    """
+    c = 0x1234567
+    for i, b in enumerate(buf[4:]):
+        c += b * (i+1)
+        if (c == checksum):
+            return i+4
+    return False
+
 
 def decode_string(byte_list):
     string = ""
@@ -81,29 +91,54 @@ class ServerInfoPacket(Packet):
         self._add_to_dict(unpacked)
         self.fileneeded = pkt[format_length:]
 
+class PlayerInfoPacket(Packet):
+    players = []
+
+    def __init__(self, pkt):
+        self.type = PacketType.PT_PLAYERINFO
+        self.unpack(pkt)
+
+    def unpack(self, pkt):
+        pkt = self.unpack_common(pkt)
+        format_length = 36
+        format = "<B22s4sBBBIH"
+        fields = "num name address team skin data score timeinserver"
+        for i in range(32):
+            t = namedtuple('Packet', fields)
+            unpacked = t._asdict(t._make(struct.unpack(format, pkt[:format_length])))
+            if (unpacked['num'] < 255):
+                unpacked['name'] = decode_string(unpacked['name'])
+                self.players.append(unpacked)
+            pkt = pkt[format_length:]
+
+
 class SRB2Query:
+    data = bytearray()
+
     def __init__(self, url="localhost", port=5029):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.connect((url, port))
+        self.socket.settimeout(1)
 
     def send(self, request):
         self.socket.sendall(request.pack())
 
-    def recv(self):
-        data = bytearray()
-        buff_size = 1024
+    def recv(self, n):
+        BUF_SIZE = 1450
         while True:
-            new_data = self.socket.recv(buff_size)
-            data += new_data
-            if len(new_data) < buff_size:
-                break
-        return data
+            new_data = self.socket.recv(BUF_SIZE)
+            self.data += new_data
+            if len(self.data) >= n:
+                result = self.data[:n]
+                self.data = self.data[n:]
+                return result
 
     def askinfo(self):
         pkt = Packet(PacketType.PT_ASKINFO)
         self.send(pkt)
-        resp = ServerInfoPacket(self.recv())
-        return resp
+        serverinfo = ServerInfoPacket(self.recv(615))
+        playerinfo = PlayerInfoPacket(self.recv(1160))
+        return serverinfo, playerinfo
 
 q = SRB2Query("srb2circuit.eu")
-resp = q.askinfo()
+server, player = q.askinfo()
