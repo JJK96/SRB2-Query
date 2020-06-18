@@ -4,6 +4,43 @@ import struct
 import socket
 from collections import namedtuple
 
+def get_map_title(title, iszone, actnum):
+    mapname = title
+    if iszone:
+        mapname += " zone"
+    if actnum:
+        mapname += f" {actnum}"
+    return mapname
+
+def char_to_num(char):
+    print(type(char))
+    print(char)
+    return ord(char) - ord("A")
+
+def mapname_to_num(mapname):
+    print(mapname)
+    name = mapname[3:] # remove "MAP"
+    print(name)
+    try:
+        num = int(name)
+        return num
+    except ValueError:
+        p = char_to_num(name[0])
+        try:
+            q = int(name[1])
+        except ValueError:
+            q = 10 + char_to_num(name[1])
+        return ((36*p + q) + 100)
+
+num_to_skin = {
+    0: "sonic",
+    1: "tails",
+    2: "knuckles",
+    3: "amy",
+    4: "fang",
+    5: "metalsonic",
+}
+
 class PacketType(Enum):
     PT_ASKINFO         = 12
     PT_SERVERINFO      = 13
@@ -87,6 +124,11 @@ class ServerInfoPacket(Packet):
         unpacked = t._asdict(t._make(struct.unpack(format, pkt[:format_length])))
         for s in string_fields:
             unpacked[s] = decode_string(unpacked[s])
+        unpacked['map'] =  {
+            'num': mapname_to_num(unpacked['mapname']),
+            'name': unpacked['mapname'],
+            'title': get_map_title(unpacked['maptitle'], unpacked['iszone'], unpacked['actnum'])
+        }
         self._add_to_dict(unpacked)
         self.fileneeded = pkt[format_length:]
 
@@ -107,6 +149,7 @@ class PlayerInfoPacket(Packet):
             unpacked = t._asdict(t._make(struct.unpack(format, pkt[:format_length])))
             if (unpacked['num'] < 255):
                 unpacked['name'] = decode_string(unpacked['name'])
+                unpacked['skin'] = num_to_skin.get(unpacked['skin'], "unknown")
                 self.players.append(unpacked)
             pkt = pkt[format_length:]
 
@@ -139,4 +182,6 @@ class SRB2Query:
 
 if __name__ == "__main__":
     q = SRB2Query("localhost")
-    server, player = q.askinfo()
+    serverpkt, playerpkt = q.askinfo()
+    print(serverpkt.__dict__)
+    print(playerpkt.__dict__)
