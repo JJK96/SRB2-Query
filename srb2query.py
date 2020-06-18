@@ -1,7 +1,6 @@
 from enum import Enum
 from dataclasses import dataclass
 import struct
-import binascii
 import socket
 from collections import namedtuple
 
@@ -92,10 +91,10 @@ class ServerInfoPacket(Packet):
         self.fileneeded = pkt[format_length:]
 
 class PlayerInfoPacket(Packet):
-    players = []
 
     def __init__(self, pkt):
         self.type = PacketType.PT_PLAYERINFO
+        self.players = []
         self.unpack(pkt)
 
     def unpack(self, pkt):
@@ -110,7 +109,6 @@ class PlayerInfoPacket(Packet):
                 unpacked['name'] = decode_string(unpacked['name'])
                 self.players.append(unpacked)
             pkt = pkt[format_length:]
-
 
 class SRB2Query:
     data = bytearray()
@@ -139,5 +137,6 @@ class SRB2Query:
         playerinfo = PlayerInfoPacket(self.recv())
         return serverinfo, playerinfo
 
-q = SRB2Query("srb2circuit.eu")
-server, player = q.askinfo()
+if __name__ == "__main__":
+    q = SRB2Query("localhost")
+    server, player = q.askinfo()
