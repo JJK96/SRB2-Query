@@ -123,21 +123,20 @@ class SRB2Query:
     def send(self, request):
         self.socket.sendall(request.pack())
 
-    def recv(self, n):
+    def recv(self):
         BUF_SIZE = 1450
-        while True:
-            new_data = self.socket.recv(BUF_SIZE)
-            self.data += new_data
-            if len(self.data) >= n:
-                result = self.data[:n]
-                self.data = self.data[n:]
-                return result
+        packet = self.socket.recv(BUF_SIZE)
+        cs = struct.unpack("I", packet[:4])[0]
+        if cs == checksum(packet[4:]):
+            return packet
+        else:
+            raise Exception("Incorrect checksum")
 
     def askinfo(self):
         pkt = Packet(PacketType.PT_ASKINFO)
         self.send(pkt)
-        serverinfo = ServerInfoPacket(self.recv(615))
-        playerinfo = PlayerInfoPacket(self.recv(1160))
+        serverinfo = ServerInfoPacket(self.recv())
+        playerinfo = PlayerInfoPacket(self.recv())
         return serverinfo, playerinfo
 
 q = SRB2Query("srb2circuit.eu")
