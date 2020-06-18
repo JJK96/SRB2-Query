@@ -16,6 +16,8 @@ def char_to_num(char):
     return ord(char) - ord("A")
 
 def mapname_to_num(mapname):
+    if not mapname:
+        return 0
     name = mapname[3:] # remove "MAP"
     try:
         num = int(name)
@@ -155,7 +157,6 @@ class SRB2Query:
     def __init__(self, url="localhost", port=5029):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.connect((url, port))
-        self.socket.settimeout(1)
 
     def send(self, request):
         self.socket.sendall(request.pack())
