@@ -13,14 +13,10 @@ def get_map_title(title, iszone, actnum):
     return mapname
 
 def char_to_num(char):
-    print(type(char))
-    print(char)
     return ord(char) - ord("A")
 
 def mapname_to_num(mapname):
-    print(mapname)
     name = mapname[3:] # remove "MAP"
-    print(name)
     try:
         num = int(name)
         return num
