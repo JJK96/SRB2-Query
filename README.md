@@ -15,6 +15,6 @@ print(player.__dict__)
 
 Then the `server` and `player` packets can be read to obtain the info from the server.
 
-## Feature
+## Features
 
 Currently does not interpret every field, feel free to fork and PR!
