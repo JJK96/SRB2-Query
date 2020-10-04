@@ -46,6 +46,9 @@ class PacketType(Enum):
     PT_TELLFILESNEEDED = 34
     PT_MOREFILESNEEDED = 35
 
+NETFIL_WILLSEND = 16
+NETFIL_WONTSEND = 32
+
 def checksum(buf):
     """
     @param buf: buffer without the checksum part
@@ -77,6 +80,11 @@ def decode_string(byte_list):
         if b <= 128:
             string += chr(b)
     return string
+
+def unpack_into(pkt, format, fields):
+    t = namedtuple('Packet', fields)
+    unpacked = t._asdict(t._make(struct.unpack(format, pkt)))
+    return unpacked
 
 @dataclass
 class Packet:
@@ -112,6 +120,24 @@ class ServerInfoPacket(Packet):
         self.type = PacketType.PT_SERVERINFO
         self.unpack(pkt)
 
+    def unpack_fileneeded(self, fileneeded):
+        files = []
+        offset = 0
+        for i in range(self.fileneedednum):
+            format = "<BI"
+            format_length = 5
+            fields = "status size"
+            unpacked = unpack_into(fileneeded[offset:offset+format_length], format, fields)
+            offset += format_length
+            unpacked['name'] = decode_string(fileneeded[offset:])
+            offset += len(unpacked['name'])+1
+            unpacked['md5sum'] = fileneeded[offset:offset+16]
+            offset += 16
+            unpacked['toobig'] = not (unpacked['status'] & NETFIL_WILLSEND)
+            unpacked['download'] = not(unpacked['toobig'] or unpacked['status'] & NETFIL_WONTSEND)
+            files.append(unpacked)
+        self.filesneeded = files
+
     def unpack(self, pkt):
         pkt = self.unpack_common(pkt)
         format_length = 150
@@ -128,7 +154,7 @@ class ServerInfoPacket(Packet):
             'title': get_map_title(unpacked['maptitle'], unpacked['iszone'], unpacked['actnum'])
         }
         self._add_to_dict(unpacked)
-        self.fileneeded = pkt[format_length:]
+        self.unpack_fileneeded(pkt[format_length:])
 
 class PlayerInfoPacket(Packet):
 
