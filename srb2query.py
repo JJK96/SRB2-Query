@@ -77,7 +77,7 @@ def decode_string(byte_list):
     for b in byte_list:
         if b == 0:
             break
-        if b <= 128:
+        if b < 128:
             string += chr(b)
     return string
 
