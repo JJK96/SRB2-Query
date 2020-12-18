@@ -21,7 +21,11 @@ def num_to_char(num):
 def mapname_to_num(mapname):
     if not mapname:
         return 0
-    name = mapname[3:] # remove "MAP"
+    mapname = mapname.upper()
+    if mapname.startswith("MAP"):
+        name = mapname[3:] # remove "MAP"
+    else:
+        name = mapname
     try:
         num = int(name)
         return num
