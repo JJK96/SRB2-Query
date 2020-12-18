@@ -15,6 +15,9 @@ def get_map_title(title, iszone, actnum):
 def char_to_num(char):
     return ord(char) - ord("A")
 
+def num_to_char(num):
+    return chr(num + ord("A"))
+
 def mapname_to_num(mapname):
     if not mapname:
         return 0
@@ -29,6 +32,16 @@ def mapname_to_num(mapname):
         except ValueError:
             q = 10 + char_to_num(name[1])
         return ((36*p + q) + 100)
+
+def mapnum_to_name(mapnum):
+    if mapnum < 100:
+        return "MAP" + str(mapnum)
+    mapnum -= 100
+    p, q = divmod(mapnum, 36)
+    p = num_to_char(p)
+    if q >= 10:
+        q = num_to_char(q-10)
+    return f"MAP{p}{q}"
 
 num_to_skin = {
     0: "sonic",
