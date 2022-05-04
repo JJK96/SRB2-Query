@@ -4,6 +4,8 @@ import struct
 import socket
 from collections import namedtuple
 
+MAX_WADPATH = 128
+
 def get_map_title(title, iszone, actnum):
     mapname = title
     if iszone:
@@ -141,17 +143,18 @@ class ServerInfoPacket(Packet):
         files = []
         offset = 0
         for i in range(self.fileneedednum):
-            format = "<BI"
-            format_length = 5
-            fields = "status size"
+            # See D_ParseFileneeded in d_netfil.c in SRB2 Source code
+            format = "<BBI"
+            format_length = 6
+            fields = "status folder totalsize"
             unpacked = unpack_into(fileneeded[offset:offset+format_length], format, fields)
             offset += format_length
-            unpacked['name'] = decode_string(fileneeded[offset:])
-            offset += len(unpacked['name'])+1
-            unpacked['md5sum'] = fileneeded[offset:offset+16]
-            offset += 16
+            unpacked['filename'] = decode_string(fileneeded[offset:])
+            offset += len(unpacked['filename']) + 1
             unpacked['toobig'] = not (unpacked['status'] & NETFIL_WILLSEND)
             unpacked['download'] = not(unpacked['toobig'] or unpacked['status'] & NETFIL_WONTSEND)
+            unpacked['md5sum'] = fileneeded[offset:offset+16]
+            offset += 16
             files.append(unpacked)
         self.filesneeded = files
 
@@ -221,7 +224,13 @@ class SRB2Query:
         return serverinfo, playerinfo
 
 if __name__ == "__main__":
-    q = SRB2Query("localhost")
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("hostname")
+    args = parser.parse_args()
+    q = SRB2Query(args.hostname)
     serverpkt, playerpkt = q.askinfo()
     print(serverpkt.__dict__)
     print(playerpkt.__dict__)
+    for f in serverpkt.filesneeded:
+        print(f)
